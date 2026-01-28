@@ -109,13 +109,40 @@ export default function OrderInvoice({ order }) {
                 {/* Actions */}
                 <div className="space-y-4">
                     {isUPI && (
-                        <div className="bg-green-50 rounded-xl p-4 border border-green-100 text-center mb-4">
-                            <p className="text-[#2F855A] font-bold text-sm mb-2 flex items-center justify-center gap-2">
-                                <Smartphone className="w-4 h-4" /> Payment Status: UPI
+                        <div className={`rounded-xl p-4 border text-center mb-4 ${
+                            order.paymentStatus === 'Paid' 
+                                ? 'bg-green-50 border-green-200' 
+                                : 'bg-yellow-50 border-yellow-200'
+                        }`}>
+                            <p className={`font-bold text-sm mb-2 flex items-center justify-center gap-2 ${
+                                order.paymentStatus === 'Paid' 
+                                    ? 'text-green-700' 
+                                    : 'text-yellow-700'
+                            }`}>
+                                <Smartphone className="w-4 h-4" /> 
+                                Payment Status: {order.paymentStatus === 'Paid' ? 'Paid ✓' : 'Pending'}
                             </p>
-                            <p className="text-xs text-gray-600">
-                                If you haven't completed the payment yet, please check your UPI app.
-                            </p>
+                            {order.paymentStatus === 'Paid' ? (
+                                <div className="space-y-1">
+                                    <p className="text-xs text-green-700 font-medium">
+                                        Payment confirmed successfully!
+                                    </p>
+                                    {order.upiTxnRef && (
+                                        <p className="text-xs text-gray-600 font-mono">
+                                            Txn Ref: {order.upiTxnRef}
+                                        </p>
+                                    )}
+                                    {order.paidAt && (
+                                        <p className="text-xs text-gray-500">
+                                            Paid on: {new Date(order.paidAt).toLocaleString('en-IN')}
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-yellow-700">
+                                    Please complete the payment to view your invoice.
+                                </p>
+                            )}
                         </div>
                     )}
 
