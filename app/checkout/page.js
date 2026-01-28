@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { CONFIG } from "@/lib/config";
+import UPIPaySelector from "@/components/UPIPaySelector";
 
 export default function CheckoutPage() {
     const { cart, getCartTotal, clearCart } = useCart();
@@ -79,9 +80,11 @@ export default function CheckoutPage() {
         try {
             // Save local
             console.log('Saving order to local storage:', order);
-            localStorage.setItem(`order_${orderId}`, JSON.stringify(order));
+            const orderJson = JSON.stringify(order);
+            localStorage.setItem(`order_${orderId}`, orderJson);
 
-            // Verify save
+            // Verify save with a small delay to ensure write is complete
+            await new Promise(resolve => setTimeout(resolve, 100));
             const verify = localStorage.getItem(`order_${orderId}`);
             if (!verify) {
                 console.error("FAILED TO SAVE ORDER TO LOCAL STORAGE");
@@ -89,8 +92,25 @@ export default function CheckoutPage() {
                 return false;
             }
 
-            // Send to Sheets
-            await submitOrderToGoogleSheets(order);
+            // Verify the order data matches
+            try {
+                const verifiedOrder = JSON.parse(verify);
+                if (verifiedOrder.id !== orderId) {
+                    console.error("Order ID mismatch after save");
+                    toast.error("System Error: Order verification failed.");
+                    return false;
+                }
+            } catch (verifyError) {
+                console.error("Error verifying saved order:", verifyError);
+                toast.error("System Error: Could not verify order.");
+                return false;
+            }
+
+            // Send to Sheets (non-blocking)
+            submitOrderToGoogleSheets(order).catch(err => {
+                console.error("Error sending to Google Sheets:", err);
+                // Don't block the order flow if Sheets fails
+            });
 
             // Clear Cart
             clearCart();
@@ -98,7 +118,10 @@ export default function CheckoutPage() {
             // Redirect to Confirmation Page (which persists state)
             if (shouldRedirect) {
                 toast.success("Order Placed Successfully!");
-                router.push(`/order-confirmation/${orderId}`);
+                // Use setTimeout to ensure state is saved before navigation
+                setTimeout(() => {
+                    router.push(`/order-confirmation/${orderId}`);
+                }, 200);
             }
 
             return true;
@@ -267,29 +290,53 @@ export default function CheckoutPage() {
                             </div>
                         </div>
 
-                        <button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            type="submit"
-                            className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    {paymentMethod === 'UPI' ? 'Place Order & Pay' : 'Place Order'}
-                                    <CheckCircle className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
+                        {paymentMethod === 'UPI' && orderId ? (
+                            <div className="mt-4">
+                                <UPIPaySelector
+                                    orderId={orderId}
+                                    amount={total}
+                                    onProcessOrder={async () => {
+                                        const success = await processOrder(false);
+                                        if (success) {
+                                            // Redirect to confirmation page after a short delay
+                                            setTimeout(() => {
+                                                router.push(`/order-confirmation/${orderId}`);
+                                            }, 500);
+                                        }
+                                        return success;
+                                    }}
+                                />
+                            </div>
+                        ) : paymentMethod === 'UPI' ? (
+                            <div className="mt-4 p-4 bg-gray-50 rounded-xl text-center text-gray-500">
+                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                                <p className="text-sm">Loading payment options...</p>
+                            </div>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting}
+                                    type="submit"
+                                    className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Place Order
+                                            <CheckCircle className="w-5 h-5" />
+                                        </>
+                                    )}
+                                </button>
 
-                        {paymentMethod !== 'UPI' && (
-                            <p className="text-xs text-center text-gray-400 mt-3">
-                                WhatsApp will open to confirm your order.
-                            </p>
+                                <p className="text-xs text-center text-gray-400 mt-3">
+                                    WhatsApp will open to confirm your order.
+                                </p>
+                            </>
                         )}
                     </div>
                 </div>

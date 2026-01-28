@@ -15,31 +15,53 @@ export default function OrderConfirmationPage() {
 
     useEffect(() => {
         const fetchOrder = () => {
-            const id = params?.id;
-            console.log('OrderConfirmation: ID from params:', id);
+            try {
+                const id = params?.id;
+                console.log('OrderConfirmation: ID from params:', id);
 
-            if (!id) return;
-
-            const savedOrder = localStorage.getItem(`order_${id}`);
-            console.log('OrderConfirmation: Loaded order:', savedOrder ? 'Found' : 'Not Found');
-
-            if (savedOrder) {
-                const parsedOrder = JSON.parse(savedOrder);
-                setOrder(parsedOrder);
-
-                // Trigger WhatsApp for COD if not already done
-                if (parsedOrder.paymentMethod === 'COD' && !whatsappTriggered.current) {
-                    whatsappTriggered.current = true;
-                    // Small delay to ensure render
-                    setTimeout(() => {
-                        openWhatsAppConfirmation(parsedOrder);
-                    }, 1000);
+                if (!id) {
+                    setLoading(false);
+                    return;
                 }
+
+                // Check if we're on client side
+                if (typeof window === 'undefined') {
+                    setLoading(false);
+                    return;
+                }
+
+                const savedOrder = localStorage.getItem(`order_${id}`);
+                console.log('OrderConfirmation: Loaded order:', savedOrder ? 'Found' : 'Not Found');
+
+                if (savedOrder) {
+                    try {
+                        const parsedOrder = JSON.parse(savedOrder);
+                        setOrder(parsedOrder);
+
+                        // Trigger WhatsApp for COD if not already done
+                        if (parsedOrder.paymentMethod === 'COD' && !whatsappTriggered.current) {
+                            whatsappTriggered.current = true;
+                            // Small delay to ensure render
+                            setTimeout(() => {
+                                openWhatsAppConfirmation(parsedOrder);
+                            }, 1000);
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing order from localStorage:', parseError);
+                        setOrder(null);
+                    }
+                } else {
+                    setOrder(null);
+                }
+            } catch (error) {
+                console.error('Error fetching order:', error);
+                setOrder(null);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchOrder();
-    }, [params]);
+    }, [params?.id]);
 
     if (loading) {
         return (

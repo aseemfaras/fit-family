@@ -7,6 +7,16 @@ import Link from 'next/link';
 export default function OrderInvoice({ order }) {
     if (!order) return null;
 
+    // Validate order structure
+    if (!order.id || !order.customer || !order.items || !Array.isArray(order.items)) {
+        console.error('Invalid order structure:', order);
+        return (
+            <div className="bg-white rounded-3xl shadow-xl p-8 text-center">
+                <p className="text-red-600">Error: Invalid order data</p>
+            </div>
+        );
+    }
+
     const isUPI = order.paymentMethod === 'UPI';
 
     return (
@@ -33,7 +43,9 @@ export default function OrderInvoice({ order }) {
                     <div className="text-center md:text-right">
                         <p className="text-sm text-gray-500 mb-1">Date</p>
                         <p className="font-medium text-gray-800">
-                            {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                day: 'numeric', month: 'long', year: 'numeric'
+                            }) : new Date().toLocaleDateString('en-IN', {
                                 day: 'numeric', month: 'long', year: 'numeric'
                             })}
                         </p>

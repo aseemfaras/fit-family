@@ -12,6 +12,7 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
     const [showFallback, setShowFallback] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [platform, setPlatform] = useState('unknown');
+    const [imageErrors, setImageErrors] = useState({});
 
     useEffect(() => {
         // Detect Platform
@@ -121,11 +122,18 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
                                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                         }`}
                                 >
-                                    <img
-                                        src={app.logo}
-                                        alt={app.name}
-                                        className="w-10 h-10 object-contain"
-                                    />
+                                    {imageErrors[app.id] ? (
+                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                                            {app.name.charAt(0)}
+                                        </div>
+                                    ) : (
+                                        <img
+                                            src={app.logo}
+                                            alt={app.name}
+                                            className="w-10 h-10 object-contain"
+                                            onError={() => setImageErrors(prev => ({ ...prev, [app.id]: true }))}
+                                        />
+                                    )}
                                     <span className="text-xs font-semibold text-gray-700">{app.name}</span>
                                 </button>
                             ))}
