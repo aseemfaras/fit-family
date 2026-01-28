@@ -2,7 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { products } from '@/data/products';
-import WhatsAppButton from '@/components/WhatsAppButton';
+import AddToCartActions from '@/components/AddToCartActions';
 import { formatPrice } from '@/lib/utils';
 
 export async function generateMetadata({ params }) {
@@ -92,14 +92,9 @@ export default async function ProductPage({ params }) {
                     </div>
 
                     <div className="border-t border-gray-100 pt-8 mt-auto">
-                        <WhatsAppButton
-                            message={message}
-                            className="w-full md:w-auto text-lg px-10 py-4 shadow-xl hover:shadow-2xl shadow-green-900/10"
-                        >
-                            Order Now via WhatsApp
-                        </WhatsAppButton>
+                        <AddToCartActions product={product} />
                         <p className="mt-4 text-xs text-center md:text-left text-gray-400">
-                            * Secure payment and delivery details will be shared on WhatsApp.
+                            * Fast delivery & secure checkout available.
                         </p>
                     </div>
                 </div>
