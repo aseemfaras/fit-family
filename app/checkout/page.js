@@ -10,6 +10,7 @@ import toast from "react-hot-toast";
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { CONFIG } from "@/lib/config";
+import UPIPaySelector from "@/components/UPIPaySelector";
 
 export default function CheckoutPage() {
     const { cart, getCartTotal, clearCart } = useCart();
@@ -54,15 +55,11 @@ export default function CheckoutPage() {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setIsSubmitting(true);
-
+    const processOrder = async (shouldRedirect = true) => {
         // Validation
         if (!formData.name || !formData.phone || !formData.address) {
             toast.error("Please fill in all required fields.");
-            setIsSubmitting(false);
-            return;
+            return false;
         }
 
         const order = {
@@ -71,30 +68,44 @@ export default function CheckoutPage() {
             customer: formData,
             items: cart,
             subtotal: total,
-            shipping: 0, // Free shipping
+            shipping: 0,
             total: total,
             paymentMethod: paymentMethod,
-            paymentStatus: "Pending", // Manual verification
-            upiTxnRef: "", // User would manually provide this in WhatsApp ideally
+            paymentStatus: "Pending",
+            upiTxnRef: "",
             note: formData.note
         };
 
-        // Save local
-        localStorage.setItem(`order_${orderId}`, JSON.stringify(order));
+        try {
+            // Save local
+            localStorage.setItem(`order_${orderId}`, JSON.stringify(order));
 
-        // Send to Sheets
-        await submitOrderToGoogleSheets(order);
+            // Send to Sheets
+            await submitOrderToGoogleSheets(order);
 
-        // Open WhatsApp
-        openWhatsAppConfirmation(order);
+            // Clear Cart
+            clearCart();
 
-        // Clear and Notify
-        clearCart();
-        toast.success("Order placed. WhatsApp opened for confirmation.");
+            if (shouldRedirect) {
+                // Open WhatsApp for COD
+                openWhatsAppConfirmation(order);
+                toast.success("Order placed. WhatsApp opened for confirmation.");
+                router.push("/");
+            }
 
-        // Redirect or Show Success (Prompt says Post-Order Behavior: Clear cart, Show toast. Doesn't specify redirect.
-        // But since cart is cleared, staying on checkout is weird. I'll redirect to a generic thank you or Home.)
-        router.push("/");
+            return true;
+        } catch (error) {
+            console.error("Order processing error:", error);
+            toast.error("Failed to place order. Please try again.");
+            return false;
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        await processOrder(true);
+        setIsSubmitting(false);
     };
 
     const upiDeepLink = buildUPI({
@@ -232,20 +243,6 @@ export default function CheckoutPage() {
                                 </div>
                             </label>
                         </div>
-
-                        {paymentMethod === 'UPI' && (
-                            <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-dashed border-gray-300 flex flex-col items-center">
-                                <p className="text-sm font-medium text-gray-700 mb-3 text-center">Scan to Pay: {formatPrice(total)}</p>
-                                <div className="bg-white p-2 rounded-lg shadow-sm mb-3">
-                                    <QRCodeSVG value={upiDeepLink} size={150} />
-                                </div>
-                                <p className="text-xs text-gray-500 text-center max-w-[200px]">
-                                    Please scan with any UPI app. Includes Order ID: <span className="font-mono font-bold">{orderId}</span>
-                                </p>
-                                <p className="mt-2 text-xs text-[#2F855A] font-bold">Please include Order ID in UPI note if manual.</p>
-                            </div>
-                        )}
-
                     </div>
 
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -265,26 +262,37 @@ export default function CheckoutPage() {
                             </div>
                         </div>
 
-                        <button
-                            onClick={handleSubmit}
-                            disabled={isSubmitting}
-                            type="submit"
-                            className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {isSubmitting ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    Place Order <CheckCircle className="w-5 h-5" />
-                                </>
-                            )}
-                        </button>
-                        <p className="text-xs text-center text-gray-400 mt-3">
-                            WhatsApp will open to confirm your order.
-                        </p>
+                        {paymentMethod === 'UPI' ? (
+                            <UPIPaySelector
+                                orderId={orderId}
+                                amount={total}
+                                onProcessOrder={() => processOrder(false)}
+                            />
+                        ) : (
+                            <button
+                                onClick={handleSubmit}
+                                disabled={isSubmitting}
+                                type="submit"
+                                className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        Place Order <CheckCircle className="w-5 h-5" />
+                                    </>
+                                )}
+                            </button>
+                        )}
+
+                        {paymentMethod !== 'UPI' && (
+                            <p className="text-xs text-center text-gray-400 mt-3">
+                                WhatsApp will open to confirm your order.
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
