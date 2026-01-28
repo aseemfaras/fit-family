@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Copy, Check, ExternalLink, Smartphone, ChevronDown } from 'lucide-react';
-import { buildUPI, buildIntentURI } from '@/lib/upi';
+import { buildUPI, buildAppDeepLink } from '@/lib/upi';
 import { CONFIG } from '@/lib/config';
 import toast from 'react-hot-toast';
 
@@ -64,25 +64,25 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
 
             // 4. Mobile Handling
             let finalUrl = upiURI;
-            const packageId = CONFIG.UPI_APP_PACKAGES[selectedApp];
 
-            if (platform === 'android' && selectedApp !== 'other' && packageId) {
-                // Try to open specific app via Intent
-                finalUrl = buildIntentURI(upiURI, packageId);
-                toast.success(`Opening ${apps.find(a => a.id === selectedApp)?.name}...`);
+            if (selectedApp === 'other') {
+                // Default system chooser
+                finalUrl = upiURI;
+                toast.success("Opening UPI Chooser...");
             } else {
-                // Generic Intent or iOS
-                toast.success("Opening Payment App...");
+                // Specific App Deep Link
+                finalUrl = buildAppDeepLink(upiURI, selectedApp, platform);
+                toast.success(`Opening ${apps.find(a => a.id === selectedApp)?.name}...`);
             }
 
             // Open App
             window.location.href = finalUrl;
 
-            // 5. Show Fallback after delay in case app doesn't open
+            // 5. Show Fallback after delay
             setTimeout(() => {
                 setShowFallback(true);
                 setIsProcessing(false);
-            }, 1500);
+            }, 2000);
 
         } catch (err) {
             console.error(err);
@@ -108,8 +108,8 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
                                     key={app.id}
                                     onClick={() => setSelectedApp(app.id)}
                                     className={`flex items-center justify-center gap-2 p-3 border rounded-xl transition-all ${selectedApp === app.id
-                                            ? 'border-[#2F855A] bg-green-50 text-[#2F855A] ring-1 ring-[#2F855A]'
-                                            : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                        ? 'border-[#2F855A] bg-green-50 text-[#2F855A] ring-1 ring-[#2F855A]'
+                                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
                                         }`}
                                 >
                                     <span className="text-xl">{app.icon}</span>
