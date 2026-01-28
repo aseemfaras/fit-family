@@ -22,11 +22,26 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
     }, []);
 
     const apps = [
-        { id: 'gpay', name: 'Google Pay', icon: '🔵' },
-        { id: 'phonepe', name: 'PhonePe', icon: '🟣' },
-        { id: 'paytm', name: 'Paytm', icon: '💠' },
-        { id: 'bhim', name: 'BHIM', icon: '🔶' },
-        { id: 'other', name: 'Other / Default', icon: '📱' }
+        {
+            id: 'gpay',
+            name: 'Google Pay',
+            logo: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg'
+        },
+        {
+            id: 'phonepe',
+            name: 'PhonePe',
+            logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/PhonePe_Logo.svg/1280px-PhonePe_Logo.svg.png'
+        },
+        {
+            id: 'paytm',
+            name: 'Paytm',
+            logo: 'https://upload.wikimedia.org/wikipedia/commons/2/24/Paytm_Logo_%28standalone%29.svg'
+        },
+        {
+            id: 'bhim',
+            name: 'BHIM',
+            logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/BHIM_Logo.svg/512px-BHIM_Logo.svg.png'
+        }
     ];
 
     const copyToClipboard = (text) => {
@@ -65,15 +80,9 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
             // 4. Mobile Handling
             let finalUrl = upiURI;
 
-            if (selectedApp === 'other') {
-                // Default system chooser
-                finalUrl = upiURI;
-                toast.success("Opening UPI Chooser...");
-            } else {
-                // Specific App Deep Link
-                finalUrl = buildAppDeepLink(upiURI, selectedApp, platform);
-                toast.success(`Opening ${apps.find(a => a.id === selectedApp)?.name}...`);
-            }
+            // Specific App Deep Link
+            finalUrl = buildAppDeepLink(upiURI, selectedApp, platform);
+            toast.success(`Opening ${apps.find(a => a.id === selectedApp)?.name}...`);
 
             // Open App
             window.location.href = finalUrl;
@@ -102,18 +111,22 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Select Payment App</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             {apps.map((app) => (
                                 <button
                                     key={app.id}
                                     onClick={() => setSelectedApp(app.id)}
-                                    className={`flex items-center justify-center gap-2 p-3 border rounded-xl transition-all ${selectedApp === app.id
-                                        ? 'border-[#2F855A] bg-green-50 text-[#2F855A] ring-1 ring-[#2F855A]'
-                                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
+                                    className={`flex flex-col items-center justify-center gap-2 p-3 border rounded-xl transition-all h-24 ${selectedApp === app.id
+                                            ? 'border-[#2F855A] bg-green-50/50 ring-1 ring-[#2F855A]'
+                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                         }`}
                                 >
-                                    <span className="text-xl">{app.icon}</span>
-                                    <span className="text-sm font-medium">{app.name}</span>
+                                    <img
+                                        src={app.logo}
+                                        alt={app.name}
+                                        className="w-10 h-10 object-contain"
+                                    />
+                                    <span className="text-xs font-semibold text-gray-700">{app.name}</span>
                                 </button>
                             ))}
                         </div>
