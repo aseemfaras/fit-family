@@ -15,6 +15,7 @@ const nextConfig = {
         hostname: 'plus.unsplash.com',
       },
     ],
+    dangerouslyAllowSVG: true,
   },
 };
 

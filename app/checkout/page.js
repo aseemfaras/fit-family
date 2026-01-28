@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 import { formatPrice } from "@/lib/utils";
-import { generateOrderId, buildUPI, submitOrderToGoogleSheets, openWhatsAppConfirmation } from "@/lib/orderService";
-import { QRCodeSVG } from "qrcode.react";
+import { generateOrderId, submitOrderToGoogleSheets } from "@/lib/orderService";
+
 import toast from "react-hot-toast";
 import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { CONFIG } from "@/lib/config";
-import UPIPaySelector from "@/components/UPIPaySelector";
 
 export default function CheckoutPage() {
     const { cart, getCartTotal, clearCart } = useCart();
@@ -44,12 +43,13 @@ export default function CheckoutPage() {
         }
     }, [total, isCodDisabled, paymentMethod]);
 
-    if (!mounted) return null;
+    useEffect(() => {
+        if (mounted && cart.length === 0) {
+            router.push("/cart");
+        }
+    }, [cart, mounted, router]);
 
-    if (cart.length === 0) {
-        router.push("/cart");
-        return null;
-    }
+    if (!mounted || cart.length === 0) return null;
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -78,7 +78,16 @@ export default function CheckoutPage() {
 
         try {
             // Save local
+            console.log('Saving order to local storage:', order);
             localStorage.setItem(`order_${orderId}`, JSON.stringify(order));
+
+            // Verify save
+            const verify = localStorage.getItem(`order_${orderId}`);
+            if (!verify) {
+                console.error("FAILED TO SAVE ORDER TO LOCAL STORAGE");
+                toast.error("System Error: Could not save order.");
+                return false;
+            }
 
             // Send to Sheets
             await submitOrderToGoogleSheets(order);
@@ -86,11 +95,10 @@ export default function CheckoutPage() {
             // Clear Cart
             clearCart();
 
+            // Redirect to Confirmation Page (which persists state)
             if (shouldRedirect) {
-                // Open WhatsApp for COD
-                openWhatsAppConfirmation(order);
-                toast.success("Order placed. WhatsApp opened for confirmation.");
-                router.push("/");
+                toast.success("Order Placed Successfully!");
+                router.push(`/order-confirmation/${orderId}`);
             }
 
             return true;
@@ -108,10 +116,7 @@ export default function CheckoutPage() {
         setIsSubmitting(false);
     };
 
-    const upiDeepLink = buildUPI({
-        amount: total,
-        orderId: orderId
-    });
+
 
     return (
         <div className="container mx-auto px-4 py-8 md:py-12 max-w-4xl">
@@ -262,31 +267,24 @@ export default function CheckoutPage() {
                             </div>
                         </div>
 
-                        {paymentMethod === 'UPI' ? (
-                            <UPIPaySelector
-                                orderId={orderId}
-                                amount={total}
-                                onProcessOrder={() => processOrder(false)}
-                            />
-                        ) : (
-                            <button
-                                onClick={handleSubmit}
-                                disabled={isSubmitting}
-                                type="submit"
-                                className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {isSubmitting ? (
-                                    <>
-                                        <Loader2 className="w-5 h-5 animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        Place Order <CheckCircle className="w-5 h-5" />
-                                    </>
-                                )}
-                            </button>
-                        )}
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting}
+                            type="submit"
+                            className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    {paymentMethod === 'UPI' ? 'Place Order & Pay' : 'Place Order'}
+                                    <CheckCircle className="w-5 h-5" />
+                                </>
+                            )}
+                        </button>
 
                         {paymentMethod !== 'UPI' && (
                             <p className="text-xs text-center text-gray-400 mt-3">
