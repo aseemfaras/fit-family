@@ -5,11 +5,15 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { CONFIG } from '@/lib/config';
+import { useCart } from '@/context/CartContext';
+import { ShoppingCart } from 'lucide-react';
 
 export default function Header() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const pathname = usePathname();
+    const { cart } = useCart();
+    const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
 
     useEffect(() => {
         const handleScroll = () => {
@@ -57,9 +61,18 @@ export default function Header() {
                         ))}
                     </nav>
 
-                    <div className="hidden md:block">
+                    <div className="hidden md:flex items-center gap-4">
+                        <Link href="/cart" className={cn("relative p-2 rounded-full transition-colors", scrolled ? "text-gray-800 hover:bg-gray-100" : "text-white hover:bg-white/20")}>
+                            <ShoppingCart className="w-6 h-6" />
+                            {cartCount > 0 && (
+                                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </Link>
+
                         <a
-                            href={`https://wa.me/${CONFIG.phone}`}
+                            href={`https://wa.me/${CONFIG.BUSINESS_PHONE}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className={cn("px-6 py-2.5 rounded-full text-sm font-bold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5",
@@ -103,13 +116,18 @@ export default function Header() {
                             </Link>
                         ))}
                         <a
-                            href={`https://wa.me/${CONFIG.phone}`}
+                            href={`https://wa.me/${CONFIG.BUSINESS_PHONE}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="mt-8 bg-[#2F855A] text-white py-4 px-12 rounded-full text-lg font-bold shadow-xl"
+                            className="bg-[#2F855A] text-white py-4 px-12 rounded-full text-lg font-bold shadow-xl"
                         >
                             WhatsApp Us
                         </a>
+
+                        <Link href="/cart" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 text-xl font-bold text-gray-800 mt-4">
+                            <ShoppingCart className="w-6 h-6" />
+                            Cart ({cartCount})
+                        </Link>
                     </div>
                 </div>
             )}

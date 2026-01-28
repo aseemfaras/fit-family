@@ -1,10 +1,23 @@
+"use client";
 import Image from 'next/image';
 import Link from 'next/link';
-import WhatsAppButton from './WhatsAppButton';
+import { useCart } from '@/context/CartContext';
 import { formatPrice } from '@/lib/utils';
+import { ShoppingCart } from 'lucide-react';
 
 export default function ProductCard({ product }) {
-    const message = `Hi, I want to order: ${product.name} (SKU: ${product.sku}). Quantity: 1. Delivery address: [address]. Preferred date/time: [date/time]. Please confirm total price.`;
+    const { addToCart } = useCart();
+
+    const handleAddToCart = (e) => {
+        e.preventDefault(); // Prevent Link navigation if clicked on button inside Link (though button is z-30)
+        addToCart({
+            id: product.id || product.slug, // Use slug if id missing
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            type: 'product'
+        });
+    };
 
     return (
         <div className="group bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 border border-gray-100 flex flex-col h-full transform hover:-translate-y-1 relative">
@@ -32,9 +45,12 @@ export default function ProductCard({ product }) {
                 </p>
 
                 <div className="mt-auto pt-4 border-t border-gray-50 flex gap-3 pointer-events-auto">
-                    <WhatsAppButton message={message} className="w-full justify-center py-3 bg-[#2F855A] hover:bg-[#276f4b] text-white rounded-xl shadow-md transition-all active:scale-95 font-medium px-4 relative z-30">
-                        Order
-                    </WhatsAppButton>
+                    <button
+                        onClick={handleAddToCart}
+                        className="w-full flex items-center justify-center gap-2 py-3 bg-[#2F855A] hover:bg-[#276f4b] text-white rounded-xl shadow-md transition-all active:scale-95 font-medium px-4 relative z-30"
+                    >
+                        <ShoppingCart className="w-4 h-4" /> Add to Cart
+                    </button>
                 </div>
             </div>
         </div>

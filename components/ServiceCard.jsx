@@ -1,9 +1,21 @@
+"use client";
 import Image from 'next/image';
-import WhatsAppButton from './WhatsAppButton';
+import { useCart } from '@/context/CartContext';
+import { ShoppingCart } from 'lucide-react';
 import { formatPrice } from '@/lib/utils';
 
 export default function ServiceCard({ service }) {
-    const message = `Hi, I want to book: ${service.name} for [X] hour(s) on [date/time]. Please confirm availability.`;
+    const { addToCart } = useCart();
+
+    const handleAddToCart = () => {
+        addToCart({
+            id: service.id || service.slug || service.name,
+            name: `${service.name} (Service)`,
+            price: service.pricePerHour,
+            image: service.image,
+            type: 'service'
+        });
+    };
 
     return (
         <div className="group flex flex-col md:flex-row bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 h-full">
@@ -30,9 +42,12 @@ export default function ServiceCard({ service }) {
                         <span className="text-gray-400 font-medium">/ hour</span>
                     </div>
 
-                    <WhatsAppButton message={message} variant="secondary" className="w-full justify-center bg-[#F6E7D7] hover:bg-[#ebd5c0] text-[#2F855A] font-bold py-3 rounded-xl border-2 border-transparent hover:border-[#2F855A]/20">
-                        Book Appointment
-                    </WhatsAppButton>
+                    <button
+                        onClick={handleAddToCart}
+                        className="w-full flex items-center justify-center gap-2 bg-[#F6E7D7] hover:bg-[#ebd5c0] text-[#2F855A] font-bold py-3 rounded-xl border-2 border-transparent hover:border-[#2F855A]/20 transition-all"
+                    >
+                        <ShoppingCart className="w-5 h-5" /> Book Now
+                    </button>
                 </div>
             </div>
         </div>
