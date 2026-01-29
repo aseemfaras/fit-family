@@ -107,10 +107,16 @@ export default function CheckoutPage() {
             }
 
             // Send to Sheets (non-blocking)
-            submitOrderToGoogleSheets(order).catch(err => {
-                console.error("Error sending to Google Sheets:", err);
-                // Don't block the order flow if Sheets fails
-            });
+            // For UPI orders, don't save to Sheets until payment is verified
+            // For COD orders, save immediately
+            if (paymentMethod !== 'UPI') {
+                submitOrderToGoogleSheets(order).catch(err => {
+                    console.error("Error sending to Google Sheets:", err);
+                    // Don't block the order flow if Sheets fails
+                });
+            } else {
+                console.log('UPI order - will be saved to Google Sheets after payment verification');
+            }
 
             // Clear Cart
             clearCart();
@@ -334,7 +340,7 @@ export default function CheckoutPage() {
                                 </button>
 
                                 <p className="text-xs text-center text-gray-400 mt-3">
-                                    WhatsApp will open to confirm your order.
+                                    Your order will be confirmed after submission.
                                 </p>
                             </>
                         )}

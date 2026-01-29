@@ -5,7 +5,7 @@ import UPIPaySelector from '@/components/UPIPaySelector';
 import PaymentConfirmation from '@/components/PaymentConfirmation';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { Loader2, CheckCircle } from 'lucide-react';
-import { openWhatsAppConfirmation, submitOrderToGoogleSheets } from '@/lib/orderService';
+// WhatsApp confirmation removed - COD orders show invoice directly
 
 export default function OrderConfirmationPage() {
     const params = useParams();
@@ -13,7 +13,6 @@ export default function OrderConfirmationPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [paymentVerified, setPaymentVerified] = useState(false);
-    const whatsappTriggered = useRef(false);
     const visibilityPromptShown = useRef(false);
 
     useEffect(() => {
@@ -50,14 +49,7 @@ export default function OrderConfirmationPage() {
                             setPaymentVerified(true);
                         }
 
-                        // Trigger WhatsApp for COD if not already done
-                        if (parsedOrder.paymentMethod === 'COD' && !whatsappTriggered.current) {
-                            whatsappTriggered.current = true;
-                            // Small delay to ensure render
-                            setTimeout(() => {
-                                openWhatsAppConfirmation(parsedOrder);
-                            }, 1000);
-                        }
+                        // WhatsApp redirect removed - COD orders now show invoice directly
                     } catch (parseError) {
                         console.error('Error parsing order from localStorage:', parseError);
                         setOrder(null);
@@ -126,13 +118,8 @@ export default function OrderConfirmationPage() {
         setOrder(verifiedOrder);
         setPaymentVerified(true);
         
-        // Update Google Sheets with payment confirmation
-        try {
-            await submitOrderToGoogleSheets(verifiedOrder);
-        } catch (error) {
-            console.error('Error updating Google Sheets:', error);
-            // Don't block the flow if Sheets update fails
-        }
+        // Note: Google Sheets update is already handled in verifyUPIPayment()
+        // No need to call submitOrderToGoogleSheets again here to avoid duplicates
     };
 
     return (
