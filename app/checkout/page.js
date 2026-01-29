@@ -22,14 +22,12 @@ export default function CheckoutPage() {
         name: "",
         phone: "",
         email: "",
-        houseFlatNumber: "",
-        buildingApartment: "",
+        houseBuilding: "",
         areaStreetSector: "",
         pincode: "",
         landmark: "",
         townCity: "",
         state: "",
-        preferredDateTime: "",
         note: ""
     });
 
@@ -140,29 +138,26 @@ export default function CheckoutPage() {
             return false;
         }
 
-        // Validate all address fields
-        const addressFields = [
-            formData.houseFlatNumber,
-            formData.buildingApartment,
+        // Validate all required address fields (landmark is optional)
+        const requiredAddressFields = [
+            formData.houseBuilding,
             formData.areaStreetSector,
             formData.pincode,
-            formData.landmark,
             formData.townCity,
             formData.state
         ];
 
-        if (addressFields.some(field => !field || !field.trim())) {
-            toast.error("Please fill in all address fields.");
+        if (requiredAddressFields.some(field => !field || !field.trim())) {
+            toast.error("Please fill in all required address fields.");
             return false;
         }
 
-        // Combine address fields into a single comma-separated string
+        // Combine address fields into a single comma-separated string (landmark is optional)
         const combinedAddress = [
-            formData.houseFlatNumber,
-            formData.buildingApartment,
+            formData.houseBuilding,
             formData.areaStreetSector,
             formData.pincode,
-            formData.landmark,
+            formData.landmark, // Optional field, will be filtered if empty
             formData.townCity,
             formData.state
         ].filter(field => field && field.trim()).join(", ");
@@ -314,28 +309,15 @@ export default function CheckoutPage() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">House/Flat Number *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">House/Flat Number & Building/Apartment *</label>
                                     <input
                                         type="text"
-                                        name="houseFlatNumber"
-                                        value={formData.houseFlatNumber}
+                                        name="houseBuilding"
+                                        value={formData.houseBuilding}
                                         onChange={handleChange}
                                         required
                                         className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
-                                        placeholder="e.g., 123, Flat 4A"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Building/Apartment Name *</label>
-                                    <input
-                                        type="text"
-                                        name="buildingApartment"
-                                        value={formData.buildingApartment}
-                                        onChange={handleChange}
-                                        required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
-                                        placeholder="e.g., Green Valley Apartments"
+                                        placeholder="e.g., 123, Flat 4A, Green Valley Apartments"
                                     />
                                 </div>
 
@@ -381,13 +363,12 @@ export default function CheckoutPage() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Landmark *</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Landmark (Optional)</label>
                                         <input
                                             type="text"
                                             name="landmark"
                                             value={formData.landmark}
                                             onChange={handleChange}
-                                            required
                                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
                                             placeholder="e.g., Near Park"
                                         />
@@ -451,18 +432,6 @@ export default function CheckoutPage() {
                                         placeholder="e.g., Delhi"
                                     />
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Date & Time</label>
-                                <input
-                                    type="text"
-                                    name="preferredDateTime"
-                                    value={formData.preferredDateTime}
-                                    onChange={handleChange}
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
-                                    placeholder="e.g., Tomorrow Morning"
-                                />
                             </div>
 
                             <div>
