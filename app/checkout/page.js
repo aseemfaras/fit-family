@@ -21,7 +21,13 @@ export default function CheckoutPage() {
         name: "",
         phone: "",
         email: "",
-        address: "",
+        houseFlatNumber: "",
+        buildingApartment: "",
+        areaStreetSector: "",
+        pincode: "",
+        landmark: "",
+        townCity: "",
+        state: "",
         preferredDateTime: "",
         note: ""
     });
@@ -58,15 +64,45 @@ export default function CheckoutPage() {
 
     const processOrder = async (shouldRedirect = true) => {
         // Validation
-        if (!formData.name || !formData.phone || !formData.address) {
+        if (!formData.name || !formData.phone) {
             toast.error("Please fill in all required fields.");
             return false;
         }
 
+        // Validate all address fields
+        const addressFields = [
+            formData.houseFlatNumber,
+            formData.buildingApartment,
+            formData.areaStreetSector,
+            formData.pincode,
+            formData.landmark,
+            formData.townCity,
+            formData.state
+        ];
+
+        if (addressFields.some(field => !field || !field.trim())) {
+            toast.error("Please fill in all address fields.");
+            return false;
+        }
+
+        // Combine address fields into a single comma-separated string
+        const combinedAddress = [
+            formData.houseFlatNumber,
+            formData.buildingApartment,
+            formData.areaStreetSector,
+            formData.pincode,
+            formData.landmark,
+            formData.townCity,
+            formData.state
+        ].filter(field => field && field.trim()).join(", ");
+
         const order = {
             id: orderId,
             createdAt: new Date().toISOString(),
-            customer: formData,
+            customer: {
+                ...formData,
+                address: combinedAddress // Store combined address
+            },
             items: cart,
             subtotal: total,
             shipping: 0,
@@ -199,17 +235,101 @@ export default function CheckoutPage() {
                                 />
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address *</label>
-                                <textarea
-                                    name="address"
-                                    value={formData.address}
-                                    onChange={handleChange}
-                                    required
-                                    rows="3"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all resize-none"
-                                    placeholder="Street, City, Pincode"
-                                ></textarea>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">House/Flat Number *</label>
+                                    <input
+                                        type="text"
+                                        name="houseFlatNumber"
+                                        value={formData.houseFlatNumber}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        placeholder="e.g., 123, Flat 4A"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Building/Apartment Name *</label>
+                                    <input
+                                        type="text"
+                                        name="buildingApartment"
+                                        value={formData.buildingApartment}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        placeholder="e.g., Green Valley Apartments"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Area/Street/Sector/Village *</label>
+                                    <input
+                                        type="text"
+                                        name="areaStreetSector"
+                                        value={formData.areaStreetSector}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        placeholder="e.g., Sector 5, Main Street"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+                                        <input
+                                            type="text"
+                                            name="pincode"
+                                            value={formData.pincode}
+                                            onChange={handleChange}
+                                            required
+                                            maxLength={6}
+                                            pattern="[0-9]{6}"
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                            placeholder="e.g., 110001"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Landmark *</label>
+                                        <input
+                                            type="text"
+                                            name="landmark"
+                                            value={formData.landmark}
+                                            onChange={handleChange}
+                                            required
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                            placeholder="e.g., Near Park"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Town/City *</label>
+                                    <input
+                                        type="text"
+                                        name="townCity"
+                                        value={formData.townCity}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        placeholder="e.g., New Delhi"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                                    <input
+                                        type="text"
+                                        name="state"
+                                        value={formData.state}
+                                        onChange={handleChange}
+                                        required
+                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        placeholder="e.g., Delhi"
+                                    />
+                                </div>
                             </div>
 
                             <div>

@@ -62,10 +62,10 @@ export default function Header() {
                     </nav>
 
                     <div className="hidden md:flex items-center gap-4">
-                        <Link href="/cart" className={cn("relative p-2 rounded-full transition-colors", scrolled ? "text-gray-800 hover:bg-gray-100" : "text-white hover:bg-white/20")}>
+                        <Link href="/cart" className={cn("relative p-2 rounded-full transition-colors", scrolled ? "text-[#2F855A] hover:bg-green-50" : "text-[#2F855A] bg-white/90 hover:bg-white shadow-sm")}>
                             <ShoppingCart className="w-6 h-6" />
                             {cartCount > 0 && (
-                                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
                                     {cartCount}
                                 </span>
                             )}
@@ -83,18 +83,28 @@ export default function Header() {
                         </a>
                     </div>
 
-                    {/* Mobile Menu Button */}
-                    <button
-                        className={cn("md:hidden p-2 rounded-lg backdrop-blur-sm", scrolled ? "text-gray-800" : "bg-white/20 text-[#2F855A]")}
-                        onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        aria-label="Toggle menu"
-                    >
-                        {isMenuOpen ? (
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        ) : (
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                        )}
-                    </button>
+                    {/* Mobile: Cart and Menu Button */}
+                    <div className="md:hidden flex items-center gap-3">
+                        <Link href="/cart" className={cn("relative p-2 rounded-lg backdrop-blur-sm transition-colors", scrolled ? "text-[#2F855A] bg-white/90 hover:bg-white shadow-sm" : "text-[#2F855A] bg-white/90 hover:bg-white shadow-sm")}>
+                            <ShoppingCart className="w-6 h-6" />
+                            {cartCount > 0 && (
+                                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </Link>
+                        <button
+                            className={cn("p-2 rounded-lg backdrop-blur-sm", scrolled ? "text-gray-800" : "bg-white/20 text-[#2F855A]")}
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            aria-label="Toggle menu"
+                        >
+                            {isMenuOpen ? (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            ) : (
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                            )}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -123,11 +133,6 @@ export default function Header() {
                         >
                             WhatsApp Us
                         </a>
-
-                        <Link href="/cart" onClick={() => setIsMenuOpen(false)} className="flex items-center gap-2 text-xl font-bold text-gray-800 mt-4">
-                            <ShoppingCart className="w-6 h-6" />
-                            Cart ({cartCount})
-                        </Link>
                     </div>
                 </div>
             )}
