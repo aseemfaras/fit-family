@@ -11,7 +11,7 @@ import { ArrowLeft, CheckCircle, Loader2, Truck } from "lucide-react";
 import Link from "next/link";
 import { CONFIG } from "@/lib/config";
 import UPIPaySelector from "@/components/UPIPaySelector";
-import { getDeliveryEstimate } from "@/lib/deliveryEstimate";
+import { getDeliveryEstimate, getPincodeDetails } from "@/lib/deliveryEstimate";
 
 export default function CheckoutPage() {
     const { cart, getCartTotal, clearCart } = useCart();
@@ -38,6 +38,8 @@ export default function CheckoutPage() {
     const [orderId, setOrderId] = useState("");
     const [deliveryEstimate, setDeliveryEstimate] = useState(null);
     const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
+    const [isFetchingPincode, setIsFetchingPincode] = useState(false);
+    const [pincodeAutoFilled, setPincodeAutoFilled] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -58,6 +60,48 @@ export default function CheckoutPage() {
             router.push("/cart");
         }
     }, [cart, mounted, router]);
+
+    // Auto-fill city and state when pincode is entered
+    useEffect(() => {
+        const fetchPincodeDetails = async () => {
+            if (formData.pincode && formData.pincode.length === 6) {
+                setIsFetchingPincode(true);
+                try {
+                    const details = await getPincodeDetails(formData.pincode);
+                    if (details && (details.city || details.state)) {
+                        setFormData(prev => {
+                            // Only auto-fill if fields are empty (preserve user input)
+                            const newData = { ...prev };
+                            if (details.city && !prev.townCity) {
+                                newData.townCity = details.city;
+                            }
+                            if (details.state && !prev.state) {
+                                newData.state = details.state;
+                            }
+                            return newData;
+                        });
+                        // Only mark as auto-filled if we actually filled something
+                        if (details.city || details.state) {
+                            setPincodeAutoFilled(true);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching pincode details:', error);
+                } finally {
+                    setIsFetchingPincode(false);
+                }
+            } else {
+                // Reset auto-filled state when pincode is cleared or incomplete
+                if (formData.pincode.length < 6) {
+                    setPincodeAutoFilled(false);
+                }
+            }
+        };
+
+        // Debounce the API call
+        const timeoutId = setTimeout(fetchPincodeDetails, 500);
+        return () => clearTimeout(timeoutId);
+    }, [formData.pincode]);
 
     // Calculate delivery estimate when pincode changes
     useEffect(() => {
@@ -322,6 +366,15 @@ export default function CheckoutPage() {
                                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
                                             placeholder="e.g., 110001"
                                         />
+                                        {isFetchingPincode && formData.pincode.length === 6 && (
+                                            <p className="text-xs text-blue-600 mt-1 flex items-center gap-1">
+                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                Fetching city and state...
+                                            </p>
+                                        )}
+                                        {pincodeAutoFilled && !isFetchingPincode && formData.pincode.length === 6 && (
+                                            <p className="text-xs text-green-600 mt-1">✓ City and state auto-filled</p>
+                                        )}
                                         {isCalculatingDelivery && formData.pincode.length === 6 && (
                                             <p className="text-xs text-gray-500 mt-1">Calculating delivery time...</p>
                                         )}
@@ -360,27 +413,41 @@ export default function CheckoutPage() {
                                 )}
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Town/City *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Town/City *
+                                        {pincodeAutoFilled && formData.townCity && (
+                                            <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+                                        )}
+                                    </label>
                                     <input
                                         type="text"
                                         name="townCity"
                                         value={formData.townCity}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all ${
+                                            pincodeAutoFilled && formData.townCity ? 'border-green-300 bg-green-50/30' : 'border-gray-200'
+                                        }`}
                                         placeholder="e.g., New Delhi"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        State *
+                                        {pincodeAutoFilled && formData.state && (
+                                            <span className="ml-2 text-xs text-green-600 font-normal">(Auto-filled)</span>
+                                        )}
+                                    </label>
                                     <input
                                         type="text"
                                         name="state"
                                         value={formData.state}
                                         onChange={handleChange}
                                         required
-                                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
+                                        className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all ${
+                                            pincodeAutoFilled && formData.state ? 'border-green-300 bg-green-50/30' : 'border-gray-200'
+                                        }`}
                                         placeholder="e.g., Delhi"
                                     />
                                 </div>
