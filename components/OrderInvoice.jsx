@@ -1,7 +1,7 @@
 "use client";
 import { formatPrice } from '@/lib/utils';
 import { CONFIG } from '@/lib/config';
-import { MapPin, Phone, Calendar, Mail, CheckCircle, Smartphone } from 'lucide-react';
+import { MapPin, Phone, Calendar, Mail, CheckCircle, Smartphone, Truck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function OrderInvoice({ order }) {
@@ -35,21 +35,34 @@ export default function OrderInvoice({ order }) {
 
             <div className="p-8">
                 {/* Order Details */}
-                <div className="flex flex-col md:flex-row justify-between items-center bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
-                    <div className="text-center md:text-left mb-4 md:mb-0">
-                        <p className="text-sm text-gray-500 mb-1">Order ID</p>
-                        <p className="text-xl font-mono font-bold text-gray-800">{order.id}</p>
+                <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
+                        <div className="text-center md:text-left">
+                            <p className="text-sm text-gray-500 mb-1">Order ID</p>
+                            <p className="text-xl font-mono font-bold text-gray-800">{order.id}</p>
+                        </div>
+                        <div className="text-center md:text-right">
+                            <p className="text-sm text-gray-500 mb-1">Order Date</p>
+                            <p className="font-medium text-gray-800">
+                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                    day: 'numeric', month: 'long', year: 'numeric'
+                                }) : new Date().toLocaleDateString('en-IN', {
+                                    day: 'numeric', month: 'long', year: 'numeric'
+                                })}
+                            </p>
+                        </div>
                     </div>
-                    <div className="text-center md:text-right">
-                        <p className="text-sm text-gray-500 mb-1">Date</p>
-                        <p className="font-medium text-gray-800">
-                            {order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN', {
-                                day: 'numeric', month: 'long', year: 'numeric'
-                            }) : new Date().toLocaleDateString('en-IN', {
-                                day: 'numeric', month: 'long', year: 'numeric'
-                            })}
-                        </p>
-                    </div>
+                    
+                    {/* Delivery Estimate - Prominent Display */}
+                    {order.customer.deliveryEstimate && (
+                        <div className="bg-[#2F855A] text-white rounded-xl p-4 flex items-center gap-3 border-t border-green-600/20">
+                            <Truck className="w-6 h-6 flex-shrink-0" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-green-100 mb-1">Estimated Delivery</p>
+                                <p className="text-lg font-bold">{order.customer.deliveryEstimate}</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Items */}
@@ -101,6 +114,14 @@ export default function OrderInvoice({ order }) {
                                     <Calendar className="w-4 h-4 text-[#2F855A]" /> Preferred Time
                                 </h4>
                                 <p className="text-gray-600 pl-6">{order.customer.preferredDateTime}</p>
+                            </div>
+                        )}
+                        {order.customer.deliveryEstimate && (
+                            <div>
+                                <h4 className="font-bold text-gray-900 mb-1 flex items-center gap-2">
+                                    <Truck className="w-4 h-4 text-[#2F855A]" /> Estimated Delivery
+                                </h4>
+                                <p className="text-gray-600 pl-6 font-medium">{order.customer.deliveryEstimate}</p>
                             </div>
                         )}
                     </div>

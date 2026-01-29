@@ -7,10 +7,11 @@ import { formatPrice } from "@/lib/utils";
 import { generateOrderId, submitOrderToGoogleSheets } from "@/lib/orderService";
 
 import toast from "react-hot-toast";
-import { ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, Truck } from "lucide-react";
 import Link from "next/link";
 import { CONFIG } from "@/lib/config";
 import UPIPaySelector from "@/components/UPIPaySelector";
+import { getDeliveryEstimate } from "@/lib/deliveryEstimate";
 
 export default function CheckoutPage() {
     const { cart, getCartTotal, clearCart } = useCart();
@@ -35,6 +36,8 @@ export default function CheckoutPage() {
     const [paymentMethod, setPaymentMethod] = useState("COD");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderId, setOrderId] = useState("");
+    const [deliveryEstimate, setDeliveryEstimate] = useState(null);
+    const [isCalculatingDelivery, setIsCalculatingDelivery] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -55,6 +58,30 @@ export default function CheckoutPage() {
             router.push("/cart");
         }
     }, [cart, mounted, router]);
+
+    // Calculate delivery estimate when pincode changes
+    useEffect(() => {
+        const calculateEstimate = async () => {
+            if (formData.pincode && formData.pincode.length === 6) {
+                setIsCalculatingDelivery(true);
+                try {
+                    const estimate = await getDeliveryEstimate(formData.pincode);
+                    setDeliveryEstimate(estimate);
+                } catch (error) {
+                    console.error('Error calculating delivery estimate:', error);
+                    setDeliveryEstimate(null);
+                } finally {
+                    setIsCalculatingDelivery(false);
+                }
+            } else {
+                setDeliveryEstimate(null);
+            }
+        };
+
+        // Debounce the API call
+        const timeoutId = setTimeout(calculateEstimate, 500);
+        return () => clearTimeout(timeoutId);
+    }, [formData.pincode]);
 
     if (!mounted || cart.length === 0) return null;
 
@@ -96,12 +123,18 @@ export default function CheckoutPage() {
             formData.state
         ].filter(field => field && field.trim()).join(", ");
 
+        // Format delivery estimate for storage
+        const deliveryEstimateText = deliveryEstimate 
+            ? `${deliveryEstimate.minDate} to ${deliveryEstimate.maxDate}`
+            : null;
+
         const order = {
             id: orderId,
             createdAt: new Date().toISOString(),
             customer: {
                 ...formData,
-                address: combinedAddress // Store combined address
+                address: combinedAddress, // Store combined address
+                deliveryEstimate: deliveryEstimateText // Store delivery estimate
             },
             items: cart,
             subtotal: total,
@@ -289,6 +322,9 @@ export default function CheckoutPage() {
                                             className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#2F855A] focus:border-transparent outline-none transition-all"
                                             placeholder="e.g., 110001"
                                         />
+                                        {isCalculatingDelivery && formData.pincode.length === 6 && (
+                                            <p className="text-xs text-gray-500 mt-1">Calculating delivery time...</p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -304,6 +340,24 @@ export default function CheckoutPage() {
                                         />
                                     </div>
                                 </div>
+
+                                {/* Delivery Estimate Display */}
+                                {deliveryEstimate && !isCalculatingDelivery && (
+                                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        <Truck className="w-5 h-5 text-[#2F855A] mt-0.5 flex-shrink-0" />
+                                        <div className="flex-1">
+                                            <p className="text-sm font-semibold text-[#2F855A] mb-1">
+                                                Estimated Delivery
+                                            </p>
+                                            <p className="text-sm text-gray-700 font-medium">
+                                                {deliveryEstimate.minDate} to {deliveryEstimate.maxDate}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                ({deliveryEstimate.minDays}-{deliveryEstimate.maxDays} business days from order date)
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Town/City *</label>
