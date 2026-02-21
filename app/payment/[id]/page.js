@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatPrice } from '@/lib/utils';
 import { generatePaymentToken } from '@/lib/tokenGenerator';
@@ -16,7 +16,6 @@ export default function PaymentPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [paymentToken, setPaymentToken] = useState(null);
-    const visibilityPromptShown = useRef(false);
 
     useEffect(() => {
         const fetchOrder = () => {
@@ -65,29 +64,6 @@ export default function PaymentPage() {
         fetchOrder();
     }, [orderId]);
 
-    // Detect when user returns from UPI app
-    useEffect(() => {
-        if (!order || !paymentToken) return;
-
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && !visibilityPromptShown.current) {
-                visibilityPromptShown.current = true;
-                
-                // Check if payment was completed (token should be in notes)
-                // For now, we'll auto-verify after user returns
-                // In a real scenario, you'd check the payment status from backend
-                setTimeout(() => {
-                    // Auto-redirect to invoice after returning from UPI app
-                    router.push(`/order-confirmation/${orderId}`);
-                }, 1000);
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, [order, paymentToken, orderId, router]);
 
 
     if (loading) {

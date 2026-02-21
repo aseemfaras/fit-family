@@ -1,9 +1,11 @@
 "use client";
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import OrderInvoice from '@/components/OrderInvoice';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Smartphone, AlertCircle } from 'lucide-react';
 import { verifyUPIPaymentByToken } from '@/lib/paymentVerification';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 export default function OrderConfirmationPage() {
     const params = useParams();
@@ -11,7 +13,8 @@ export default function OrderConfirmationPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [paymentVerified, setPaymentVerified] = useState(false);
-    const visibilityPromptShown = useRef(false);
+    const [isVerifying, setIsVerifying] = useState(false);
+    const [canVerifyPayment, setCanVerifyPayment] = useState(false);
 
     useEffect(() => {
         const fetchOrder = () => {
@@ -42,15 +45,16 @@ export default function OrderConfirmationPage() {
                         const isPaid = parsedOrder.paymentStatus === 'Paid';
                         setPaymentVerified(isPaid);
                         
-                        // If order has payment token and user is returning, auto-verify
-                        if (parsedOrder.paymentToken && !isPaid) {
-                            // Auto-verify payment when user returns (they should have pasted token in UPI app)
-                            verifyUPIPaymentByToken(parsedOrder.id).then(result => {
-                                if (result.success) {
-                                    setOrder(result.order);
-                                    setPaymentVerified(true);
+                        // Check if UPI app was opened and within time window (10 minutes)
+                        if (parsedOrder.paymentMethod === 'UPI' && !isPaid) {
+                            const upiOpenedTime = sessionStorage.getItem(`upi_opened_${parsedOrder.id}`);
+                            if (upiOpenedTime) {
+                                const timeDiff = Date.now() - parseInt(upiOpenedTime);
+                                const timeWindow = 10 * 60 * 1000; // 10 minutes in milliseconds
+                                if (timeDiff <= timeWindow) {
+                                    setCanVerifyPayment(true);
                                 }
-                            });
+                            }
                         }
                     } catch (parseError) {
                         console.error('Error parsing order from localStorage:', parseError);
@@ -69,32 +73,49 @@ export default function OrderConfirmationPage() {
         fetchOrder();
     }, [params?.id]);
 
-    // Detect when user returns from UPI app (page visibility change)
-    useEffect(() => {
-        if (!order || order.paymentMethod !== 'UPI' || paymentVerified) return;
+    // Handle manual payment verification
+    const handleVerifyPayment = async () => {
+        if (!order || isVerifying) return;
 
-        const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && !visibilityPromptShown.current) {
-                visibilityPromptShown.current = true;
-                
-                // Auto-verify payment when user returns (they should have pasted token in UPI app)
-                setTimeout(async () => {
-                    if (!paymentVerified && order.paymentToken) {
-                        const result = await verifyUPIPaymentByToken(order.id);
-                        if (result.success) {
-                            setOrder(result.order);
-                            setPaymentVerified(true);
-                        }
-                    }
-                }, 1500);
+        // Check if UPI app was opened and within time window
+        const upiOpenedTime = sessionStorage.getItem(`upi_opened_${order.id}`);
+        if (!upiOpenedTime) {
+            toast.error('Please open the UPI app first to make payment');
+            return;
+        }
+
+        const timeDiff = Date.now() - parseInt(upiOpenedTime);
+        const timeWindow = 10 * 60 * 1000; // 10 minutes
+        if (timeDiff > timeWindow) {
+            toast.error('Payment window expired. Please go back to payment page and try again.');
+            return;
+        }
+
+        setIsVerifying(true);
+        toast.loading('Verifying payment...', { id: 'verify-payment' });
+
+        try {
+            const result = await verifyUPIPaymentByToken(order.id);
+            
+            if (result.success) {
+                toast.dismiss('verify-payment');
+                toast.success('Payment verified successfully!', { duration: 3000 });
+                setOrder(result.order);
+                setPaymentVerified(true);
+                // Clear the session storage flag
+                sessionStorage.removeItem(`upi_opened_${order.id}`);
+            } else {
+                toast.dismiss('verify-payment');
+                toast.error(result.error || 'Failed to verify payment');
             }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => {
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-        };
-    }, [order, paymentVerified]);
+        } catch (error) {
+            console.error('Payment verification error:', error);
+            toast.dismiss('verify-payment');
+            toast.error('Error verifying payment. Please try again.');
+        } finally {
+            setIsVerifying(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -115,41 +136,120 @@ export default function OrderConfirmationPage() {
     }
 
     const isUPI = order.paymentMethod === 'UPI';
+    const showPaymentPending = isUPI && !paymentVerified;
 
     return (
         <div className="min-h-screen bg-gray-100 py-12 px-4">
             <div className="max-w-4xl mx-auto">
-                {/* Show invoice - payment is auto-verified when user returns */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Invoice Section */}
-                    <div className={`${isUPI ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-                        <OrderInvoice order={order} />
-                    </div>
+                {showPaymentPending ? (
+                    // Payment Pending State
+                    <div className="bg-white rounded-3xl shadow-xl border border-gray-200 p-8">
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertCircle className="w-10 h-10 text-yellow-600" />
+                            </div>
+                            <h1 className="text-3xl font-bold text-gray-800 mb-2">Payment Pending</h1>
+                            <p className="text-gray-600 text-lg mb-1">
+                                Amount: <span className="font-bold text-[#2F855A]">₹{order.total.toFixed(2)}</span>
+                            </p>
+                            <p className="text-sm text-gray-500">
+                                Order ID: <span className="font-mono">{order.id}</span>
+                            </p>
+                        </div>
 
-                    {/* Payment Info Section (Only for UPI - already paid) */}
-                    {isUPI && paymentVerified && (
-                        <div className="lg:col-span-1">
-                            <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sticky top-8">
-                                <div className="text-center space-y-4">
-                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                                        <CheckCircle className="w-8 h-8 text-green-600" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-lg font-bold text-gray-800 mb-2">Payment Confirmed</h3>
-                                        <p className="text-sm text-gray-600">
-                                            Your payment of <span className="font-bold text-[#2F855A]">₹{order.total.toFixed(2)}</span> has been verified
-                                        </p>
-                                        {order.paymentToken && (
-                                            <p className="text-xs text-gray-500 mt-2">
-                                                Token: <span className="font-mono">{order.paymentToken}</span>
+                        <div className="bg-gray-50 rounded-xl p-6 mb-6">
+                            <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                <Smartphone className="w-5 h-5 text-[#2F855A]" />
+                                Next Steps
+                            </h3>
+                            <ol className="space-y-2 text-sm text-gray-600 list-decimal list-inside">
+                                <li>Complete the payment using your UPI app</li>
+                                <li>Make sure the payment is successful</li>
+                                <li>Return to this page and click "I've Paid" below</li>
+                            </ol>
+                        </div>
+
+                        {canVerifyPayment ? (
+                            <div className="space-y-4">
+                                <button
+                                    onClick={handleVerifyPayment}
+                                    disabled={isVerifying}
+                                    className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+                                >
+                                    {isVerifying ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Verifying...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle className="w-5 h-5" />
+                                            I've Paid - Verify Payment
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-xs text-center text-gray-500">
+                                    Click this button only after you have successfully completed the payment
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+                                    <p className="text-sm text-blue-800 mb-4">
+                                        Please go to the payment page and open your UPI app to make the payment first.
+                                    </p>
+                                    <Link
+                                        href={`/payment/${order.id}`}
+                                        className="inline-block bg-[#2F855A] hover:bg-[#276f4b] text-white px-6 py-3 rounded-xl font-bold transition-all"
+                                    >
+                                        Go to Payment Page
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
+                        {order.customer?.deliveryEstimate && (
+                            <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-4">
+                                <p className="text-xs text-gray-600 mb-1">Estimated Delivery</p>
+                                <p className="text-sm font-semibold text-[#2F855A]">
+                                    {order.customer.deliveryEstimate}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    // Invoice Display (Payment Verified)
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Invoice Section */}
+                        <div className={`${isUPI ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+                            <OrderInvoice order={order} />
+                        </div>
+
+                        {/* Payment Info Section (Only for UPI - already paid) */}
+                        {isUPI && paymentVerified && (
+                            <div className="lg:col-span-1">
+                                <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6 sticky top-8">
+                                    <div className="text-center space-y-4">
+                                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                                            <CheckCircle className="w-8 h-8 text-green-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-bold text-gray-800 mb-2">Payment Confirmed</h3>
+                                            <p className="text-sm text-gray-600">
+                                                Your payment of <span className="font-bold text-[#2F855A]">₹{order.total.toFixed(2)}</span> has been verified
                                             </p>
-                                        )}
+                                            {order.paymentToken && (
+                                                <p className="text-xs text-gray-500 mt-2">
+                                                    Token: <span className="font-mono">{order.paymentToken}</span>
+                                                </p>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

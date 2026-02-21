@@ -72,6 +72,10 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder, paymen
 
             // 3. Desktop Handling
             if (platform === 'desktop') {
+                // Track that QR code is shown (for payment verification)
+                if (typeof window !== 'undefined' && orderId) {
+                    sessionStorage.setItem(`upi_opened_${orderId}`, Date.now().toString());
+                }
                 setShowFallback(true);
                 toast("Scan QR with any UPI app", { icon: '📱' });
                 setIsProcessing(false);
@@ -84,6 +88,11 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder, paymen
             // Specific App Deep Link
             finalUrl = buildAppDeepLink(upiURI, selectedApp, platform);
             toast.success(`Opening ${apps.find(a => a.id === selectedApp)?.name}...`);
+
+            // Track that UPI app is being opened (for payment verification)
+            if (typeof window !== 'undefined' && orderId) {
+                sessionStorage.setItem(`upi_opened_${orderId}`, Date.now().toString());
+            }
 
             // Open App
             window.location.href = finalUrl;
