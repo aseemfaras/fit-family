@@ -45,16 +45,9 @@ export default function OrderConfirmationPage() {
                         const isPaid = parsedOrder.paymentStatus === 'Paid';
                         setPaymentVerified(isPaid);
                         
-                        // Check if UPI app was opened and within time window (10 minutes)
+                        // Allow payment verification if payment is pending
                         if (parsedOrder.paymentMethod === 'UPI' && !isPaid) {
-                            const upiOpenedTime = sessionStorage.getItem(`upi_opened_${parsedOrder.id}`);
-                            if (upiOpenedTime) {
-                                const timeDiff = Date.now() - parseInt(upiOpenedTime);
-                                const timeWindow = 10 * 60 * 1000; // 10 minutes in milliseconds
-                                if (timeDiff <= timeWindow) {
-                                    setCanVerifyPayment(true);
-                                }
-                            }
+                            setCanVerifyPayment(true);
                         }
                     } catch (parseError) {
                         console.error('Error parsing order from localStorage:', parseError);
@@ -77,41 +70,25 @@ export default function OrderConfirmationPage() {
     const handleVerifyPayment = async () => {
         if (!order || isVerifying) return;
 
-        // Check if UPI app was opened and within time window
-        const upiOpenedTime = sessionStorage.getItem(`upi_opened_${order.id}`);
-        if (!upiOpenedTime) {
-            toast.error('Please open the UPI app first to make payment');
-            return;
-        }
-
-        const timeDiff = Date.now() - parseInt(upiOpenedTime);
-        const timeWindow = 10 * 60 * 1000; // 10 minutes
-        if (timeDiff > timeWindow) {
-            toast.error('Payment window expired. Please go back to payment page and try again.');
-            return;
-        }
-
         setIsVerifying(true);
-        toast.loading('Verifying payment...', { id: 'verify-payment' });
+        toast.loading('Processing payment...', { id: 'verify-payment' });
 
         try {
             const result = await verifyUPIPaymentByToken(order.id);
             
             if (result.success) {
                 toast.dismiss('verify-payment');
-                toast.success('Payment verified successfully!', { duration: 3000 });
+                toast.success('Payment confirmed! Showing invoice...', { duration: 2000 });
                 setOrder(result.order);
                 setPaymentVerified(true);
-                // Clear the session storage flag
-                sessionStorage.removeItem(`upi_opened_${order.id}`);
             } else {
                 toast.dismiss('verify-payment');
-                toast.error(result.error || 'Failed to verify payment');
+                toast.error(result.error || 'Failed to process payment');
             }
         } catch (error) {
             console.error('Payment verification error:', error);
             toast.dismiss('verify-payment');
-            toast.error('Error verifying payment. Please try again.');
+            toast.error('Error processing payment. Please try again.');
         } finally {
             setIsVerifying(false);
         }
@@ -169,44 +146,28 @@ export default function OrderConfirmationPage() {
                             </ol>
                         </div>
 
-                        {canVerifyPayment ? (
-                            <div className="space-y-4">
-                                <button
-                                    onClick={handleVerifyPayment}
-                                    disabled={isVerifying}
-                                    className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-                                >
-                                    {isVerifying ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            Verifying...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <CheckCircle className="w-5 h-5" />
-                                            I've Paid - Verify Payment
-                                        </>
-                                    )}
-                                </button>
-                                <p className="text-xs text-center text-gray-500">
-                                    Click this button only after you have successfully completed the payment
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
-                                    <p className="text-sm text-blue-800 mb-4">
-                                        Please go to the payment page and open your UPI app to make the payment first.
-                                    </p>
-                                    <Link
-                                        href={`/payment/${order.id}`}
-                                        className="inline-block bg-[#2F855A] hover:bg-[#276f4b] text-white px-6 py-3 rounded-xl font-bold transition-all"
-                                    >
-                                        Go to Payment Page
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
+                        <div className="space-y-4">
+                            <button
+                                onClick={handleVerifyPayment}
+                                disabled={isVerifying}
+                                className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
+                            >
+                                {isVerifying ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="w-5 h-5" />
+                                        Payment Completed
+                                    </>
+                                )}
+                            </button>
+                            <p className="text-xs text-center text-gray-500">
+                                Click this button after you have successfully completed the payment
+                            </p>
+                        </div>
 
                         {order.customer?.deliveryEstimate && (
                             <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-4">

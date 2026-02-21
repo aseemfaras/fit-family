@@ -15,11 +15,33 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder, paymen
     const [imageErrors, setImageErrors] = useState({});
 
     useEffect(() => {
-        // Detect Platform
-        const ua = navigator.userAgent.toLowerCase();
-        if (/android/.test(ua)) setPlatform('android');
-        else if (/iphone|ipad|ipod/.test(ua)) setPlatform('ios');
-        else setPlatform('desktop');
+        // Detect Platform - improved detection for mobile emulation
+        const checkPlatform = () => {
+            const ua = navigator.userAgent.toLowerCase();
+            const isMobileViewport = window.innerWidth <= 768;
+            
+            // Mobile emulation in DevTools often has mobile viewport but desktop UA
+            if (isMobileViewport) {
+                // Check if it's iOS-like
+                if (/iphone|ipad|ipod/.test(ua)) {
+                    setPlatform('ios');
+                } else {
+                    // Default to android for mobile viewport
+                    setPlatform('android');
+                }
+            } else if (/android/.test(ua)) {
+                setPlatform('android');
+            } else if (/iphone|ipad|ipod/.test(ua)) {
+                setPlatform('ios');
+            } else {
+                setPlatform('desktop');
+            }
+        };
+        
+        checkPlatform();
+        // Re-check on resize (for when user resizes DevTools)
+        window.addEventListener('resize', checkPlatform);
+        return () => window.removeEventListener('resize', checkPlatform);
     }, []);
 
     const apps = [

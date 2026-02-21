@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { formatPrice } from '@/lib/utils';
 import { generatePaymentToken } from '@/lib/tokenGenerator';
@@ -16,6 +16,7 @@ export default function PaymentPage() {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
     const [paymentToken, setPaymentToken] = useState(null);
+    const hasRedirected = useRef(false);
 
     useEffect(() => {
         const fetchOrder = () => {
@@ -64,7 +65,41 @@ export default function PaymentPage() {
         fetchOrder();
     }, [orderId]);
 
+    // Detect when user returns from UPI app and redirect to order confirmation
+    useEffect(() => {
+        if (!order || !paymentToken || hasRedirected.current) return;
 
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                // Check if UPI app was opened (flag exists in sessionStorage)
+                const upiOpenedTime = sessionStorage.getItem(`upi_opened_${orderId}`);
+                
+                if (upiOpenedTime && !hasRedirected.current) {
+                    hasRedirected.current = true;
+                    // Small delay to ensure page is fully loaded
+                    setTimeout(() => {
+                        router.push(`/order-confirmation/${orderId}`);
+                    }, 500);
+                }
+            }
+        };
+
+        // Check immediately if page is already visible (user might have returned before listener was set)
+        if (document.visibilityState === 'visible') {
+            const upiOpenedTime = sessionStorage.getItem(`upi_opened_${orderId}`);
+            if (upiOpenedTime && !hasRedirected.current) {
+                hasRedirected.current = true;
+                setTimeout(() => {
+                    router.push(`/order-confirmation/${orderId}`);
+                }, 500);
+            }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [order, paymentToken, orderId, router]);
 
     if (loading) {
         return (
