@@ -7,7 +7,7 @@ import { buildUPI, buildAppDeepLink } from '@/lib/upi';
 import { CONFIG } from '@/lib/config';
 import toast from 'react-hot-toast';
 
-export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
+export default function UPIPaySelector({ orderId, amount, onProcessOrder, paymentToken = '' }) {
     const [selectedApp, setSelectedApp] = useState('gpay');
     const [showFallback, setShowFallback] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -67,8 +67,8 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
 
             toast.dismiss('upi-process');
 
-            // 2. Build URI
-            const upiURI = buildUPI({ amount, orderId });
+            // 2. Build URI with payment token
+            const upiURI = buildUPI({ amount, orderId, paymentToken });
 
             // 3. Desktop Handling
             if (platform === 'desktop') {
@@ -102,7 +102,7 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
         }
     };
 
-    const uri = buildUPI({ amount, orderId });
+    const uri = buildUPI({ amount, orderId, paymentToken });
 
     return (
         <div className="w-full space-y-4">
@@ -149,9 +149,18 @@ export default function UPIPaySelector({ orderId, amount, onProcessOrder }) {
                         {!isProcessing && <Smartphone className="w-5 h-5" />}
                     </button>
 
-                    <p className="text-xs text-center text-gray-500">
-                        Order will be placed before payment app opens.
-                    </p>
+                    {paymentToken && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                            <p className="text-xs text-yellow-800 text-center">
+                                <strong>Remember:</strong> Paste your payment token in the Notes/Remarks section when making payment
+                            </p>
+                        </div>
+                    )}
+                    {!paymentToken && (
+                        <p className="text-xs text-center text-gray-500">
+                            Order will be placed before payment app opens.
+                        </p>
+                    )}
                 </div>
             ) : (
                 /* Fallback / Post-Click UI */

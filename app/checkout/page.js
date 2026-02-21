@@ -10,7 +10,6 @@ import toast from "react-hot-toast";
 import { ArrowLeft, CheckCircle, Loader2, Truck } from "lucide-react";
 import Link from "next/link";
 import { CONFIG } from "@/lib/config";
-import UPIPaySelector from "@/components/UPIPaySelector";
 import { getDeliveryEstimate, getPincodeDetails } from "@/lib/deliveryEstimate";
 
 export default function CheckoutPage() {
@@ -31,7 +30,6 @@ export default function CheckoutPage() {
         note: ""
     });
 
-    const [paymentMethod, setPaymentMethod] = useState("COD");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderId, setOrderId] = useState("");
     const [deliveryEstimate, setDeliveryEstimate] = useState(null);
@@ -45,13 +43,6 @@ export default function CheckoutPage() {
     }, []);
 
     const total = getCartTotal();
-    const isCodDisabled = total > 1500;
-
-    useEffect(() => {
-        if (isCodDisabled && paymentMethod === "COD") {
-            setPaymentMethod("UPI");
-        }
-    }, [total, isCodDisabled, paymentMethod]);
 
     useEffect(() => {
         if (mounted && cart.length === 0) {
@@ -179,7 +170,7 @@ export default function CheckoutPage() {
             subtotal: total,
             shipping: 0,
             total: total,
-            paymentMethod: paymentMethod,
+            paymentMethod: "UPI",
             paymentStatus: "Pending",
             upiTxnRef: "",
             note: formData.note
@@ -216,15 +207,7 @@ export default function CheckoutPage() {
 
             // Send to Sheets (non-blocking)
             // For UPI orders, don't save to Sheets until payment is verified
-            // For COD orders, save immediately
-            if (paymentMethod !== 'UPI') {
-                submitOrderToGoogleSheets(order).catch(err => {
-                    console.error("Error sending to Google Sheets:", err);
-                    // Don't block the order flow if Sheets fails
-                });
-            } else {
-                console.log('UPI order - will be saved to Google Sheets after payment verification');
-            }
+            console.log('UPI order - will be saved to Google Sheets after payment verification');
 
             // Clear Cart
             clearCart();
@@ -445,53 +428,68 @@ export default function CheckoutPage() {
                                     placeholder="Any special instructions?"
                                 ></textarea>
                             </div>
+
+                            {/* Complete Payment Button */}
+                            <button
+                                type="button"
+                                onClick={async (e) => {
+                                    e.preventDefault();
+                                    // Validate address fields
+                                    const requiredAddressFields = [
+                                        formData.name,
+                                        formData.phone,
+                                        formData.houseBuilding,
+                                        formData.areaStreetSector,
+                                        formData.pincode,
+                                        formData.townCity,
+                                        formData.state
+                                    ];
+
+                                    if (requiredAddressFields.some(field => !field || !field.trim())) {
+                                        toast.error("Please fill in all required fields.");
+                                        return;
+                                    }
+
+                                    if (formData.pincode.length !== 6) {
+                                        toast.error("Please enter a valid 6-digit pincode.");
+                                        return;
+                                    }
+
+                                    // Save order data temporarily and redirect to payment page
+                                    setIsSubmitting(true);
+                                    const success = await processOrder(false);
+                                    setIsSubmitting(false);
+                                    
+                                    if (success) {
+                                        setTimeout(() => {
+                                            router.push(`/payment/${orderId}`);
+                                        }, 200);
+                                    }
+                                }}
+                                disabled={isSubmitting}
+                                className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg mt-6"
+                            >
+                                {isSubmitting ? (
+                                    <>
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="w-5 h-5" />
+                                        Complete Payment
+                                    </>
+                                )}
+                            </button>
                         </form>
                     </div>
                 </div>
 
-                {/* Order Summary & Payment */}
+                {/* Order Summary */}
                 <div className="space-y-6">
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Payment Method</h2>
-
-                        <div className="space-y-3">
-                            <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'COD' ? 'border-[#2F855A] bg-green-50 ring-1 ring-[#2F855A]' : 'border-gray-200 hover:border-gray-300'} ${isCodDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                <input
-                                    type="radio"
-                                    name="payment"
-                                    value="COD"
-                                    checked={paymentMethod === 'COD'}
-                                    onChange={() => setPaymentMethod('COD')}
-                                    disabled={isCodDisabled}
-                                    className="w-4 h-4 text-[#2F855A] focus:ring-[#2F855A]"
-                                />
-                                <div className="ml-3 flex-1">
-                                    <span className="block font-medium text-gray-900">Cash on Delivery</span>
-                                    <span className="block text-xs text-gray-500">Pay when you receive orders</span>
-                                </div>
-                                {isCodDisabled && <span className="text-xs text-red-500 font-medium">Over ₹1500 only Pre-paid</span>}
-                            </label>
-
-                            <label className={`flex items-center p-4 border rounded-xl cursor-pointer transition-all ${paymentMethod === 'UPI' ? 'border-[#2F855A] bg-green-50 ring-1 ring-[#2F855A]' : 'border-gray-200 hover:border-gray-300'}`}>
-                                <input
-                                    type="radio"
-                                    name="payment"
-                                    value="UPI"
-                                    checked={paymentMethod === 'UPI'}
-                                    onChange={() => setPaymentMethod('UPI')}
-                                    className="w-4 h-4 text-[#2F855A] focus:ring-[#2F855A]"
-                                />
-                                <div className="ml-3">
-                                    <span className="block font-medium text-gray-900">UPI / QR Code</span>
-                                    <span className="block text-xs text-gray-500">GPay, PhonePe, Paytm</span>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                        <h2 className="text-xl font-bold text-gray-800 mb-4">Summary</h2>
-                        <div className="space-y-3 mb-4 text-sm">
+                        <h2 className="text-xl font-bold text-gray-800 mb-4">Order Summary</h2>
+                        <div className="space-y-3 text-sm">
                             <div className="flex justify-between text-gray-600">
                                 <span>Items ({cart.length})</span>
                                 <span>{formatPrice(total)}</span>
@@ -505,55 +503,6 @@ export default function CheckoutPage() {
                                 <span>{formatPrice(total)}</span>
                             </div>
                         </div>
-
-                        {paymentMethod === 'UPI' && orderId ? (
-                            <div className="mt-4">
-                                <UPIPaySelector
-                                    orderId={orderId}
-                                    amount={total}
-                                    onProcessOrder={async () => {
-                                        const success = await processOrder(false);
-                                        if (success) {
-                                            // Redirect to confirmation page after a short delay
-                                            setTimeout(() => {
-                                                router.push(`/order-confirmation/${orderId}`);
-                                            }, 500);
-                                        }
-                                        return success;
-                                    }}
-                                />
-                            </div>
-                        ) : paymentMethod === 'UPI' ? (
-                            <div className="mt-4 p-4 bg-gray-50 rounded-xl text-center text-gray-500">
-                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                                <p className="text-sm">Loading payment options...</p>
-                            </div>
-                        ) : (
-                            <>
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={isSubmitting}
-                                    type="submit"
-                                    className="w-full bg-[#2F855A] hover:bg-[#276f4b] text-white py-4 rounded-xl font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-                                >
-                                    {isSubmitting ? (
-                                        <>
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                            Processing...
-                                        </>
-                                    ) : (
-                                        <>
-                                            Place Order
-                                            <CheckCircle className="w-5 h-5" />
-                                        </>
-                                    )}
-                                </button>
-
-                                <p className="text-xs text-center text-gray-400 mt-3">
-                                    Your order will be confirmed after submission.
-                                </p>
-                            </>
-                        )}
                     </div>
                 </div>
             </div>
