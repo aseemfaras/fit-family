@@ -53,6 +53,20 @@ export default function OrderInvoice({ order }) {
                         </div>
                     </div>
                     
+                    {/* Payment Token Display */}
+                    {(order.paymentToken || order.upiTxnRef) && (
+                        <div className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div className="text-center md:text-left">
+                                    <p className="text-sm text-gray-500 mb-1">Payment Token</p>
+                                    <p className="text-lg font-mono font-bold text-[#2F855A]">
+                                        {order.paymentToken || order.upiTxnRef}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
                     {/* Delivery Estimate - Prominent Display */}
                     {order.customer.deliveryEstimate && (
                         <div className="bg-[#2F855A] text-white rounded-xl p-4 flex items-center gap-3 border-t border-green-600/20">
